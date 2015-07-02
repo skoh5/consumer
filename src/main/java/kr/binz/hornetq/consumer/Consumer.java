@@ -9,6 +9,7 @@ import org.hornetq.api.core.HornetQException;
 import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.api.core.client.ClientConsumer;
+import org.hornetq.api.core.client.ClientMessage;
 import org.hornetq.api.core.client.ClientSession;
 import org.hornetq.api.core.client.ClientSession.QueueQuery;
 import org.hornetq.api.core.client.ClientSessionFactory;
@@ -39,9 +40,12 @@ public class Consumer {
 	public Consumer(String host, String key) {
 		this.host = host;
 		this.key = key;
+		this.key = "";
+		/*
 		if(StringUtils.isEmpty(key) == false) {
 			queueName += "."+key;
-		}		
+		}
+		*/		
 		LOG.debug("Queue: {}", queueName);;
 	}
 	
@@ -49,15 +53,17 @@ public class Consumer {
 	private void init() throws Exception {
 		if(locator == null) {
 			Map<String,Object> map = Maps.newHashMap();
-			map.put("host", "165.243.31.56");
-			map.put("port", 9090);
-			Map<String,Object> map2 = Maps.newHashMap();
-			map2.put("host", "165.243.31.58");
-			map2.put("port", 9090);
-			
+//			map.put("host", "183.100.209.69");
+			map.put("host", "localhost");
+			map.put("port", 61616);
+//			
+//			Map<String,Object> map2 = Maps.newHashMap();
+//			map2.put("host", "165.243.31.58");
+//			map2.put("port", 9090);
+//			
 			locator = HornetQClient.createServerLocatorWithoutHA(
-					new TransportConfiguration(NettyConnectorFactory.class.getName(), map),
-					new TransportConfiguration(NettyConnectorFactory.class.getName(), map2)
+					new TransportConfiguration(NettyConnectorFactory.class.getName(), map)
+//					,new TransportConfiguration(NettyConnectorFactory.class.getName(), map2)
 					);
 			//locator.setReconnectAttempts(3);
 		}
@@ -70,6 +76,7 @@ public class Consumer {
 		if(queueQuery.isExists()) {
 			LOG.debug("queue already exists: {}", queueName);
 			isCreate = false;
+			
 			try {
 				session.deleteQueue(queueName);
 				isCreate = true;
@@ -77,6 +84,7 @@ public class Consumer {
 			} catch (HornetQException e) {
 				LOG.warn("delete queue fail: {}", queueName, e);
 			}
+			
 		}
 		try {
 			if(isCreate) {
@@ -94,6 +102,13 @@ public class Consumer {
 		session.start();
 		LOG.debug("Session started");
 		ClientConsumer consumer = session.createConsumer(queueName);
+		/*
+		ClientMessage clientMsg = null;
+		while (true) {
+			clientMsg = consumer.receive();
+			LOG.debug(clientMsg.toString());
+		}
+		*/
 		consumer.setMessageHandler(new SimpleMessageHandler());
 		LOG.debug("Consumer created");
 	}

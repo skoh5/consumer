@@ -75,15 +75,17 @@ public class Producer {
 	private void init() throws Exception {
 		if(locator == null) {
 			Map<String,Object> map = Maps.newHashMap();
-			map.put("host", "165.243.31.56");
-			map.put("port", 9090);
+//			map.put("host", "1.235.191.14");
+			map.put("host", "localhost");
+			map.put("port", 61616);
+			/*
 			Map<String,Object> map2 = Maps.newHashMap();
 			map2.put("host", "165.243.31.58");
 			map2.put("port", 9090);
-			
+			*/
 			locator = HornetQClient.createServerLocatorWithoutHA(
-					new TransportConfiguration(NettyConnectorFactory.class.getName(), map),
-					new TransportConfiguration(NettyConnectorFactory.class.getName(), map2)
+					new TransportConfiguration(NettyConnectorFactory.class.getName(), map)
+					//,new TransportConfiguration(NettyConnectorFactory.class.getName(), map2)
 					);
 			//locator.setReconnectAttempts(3);
 		}
@@ -94,7 +96,7 @@ public class Producer {
 		session.start();
 		LOG.debug("Session started");
 		producer = session.createProducer(address);
-		LOG.debug("Producer created");
+		LOG.debug("Producer created: %s", address);
 		
 	}
 	
