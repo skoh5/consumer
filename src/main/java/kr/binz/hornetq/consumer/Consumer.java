@@ -31,8 +31,8 @@ public class Consumer {
 	
 	private String key;
 	private String host;
-	private String address = "kr.binz";
-	private String queueName = "queue.agent";
+	private String address = "stomp.address.test";
+	private String queueName = "stomp.queue.test1";
 	private ServerLocator locator;
 	private ClientSession session;
 	private ClientSessionFactory factory;
@@ -53,9 +53,9 @@ public class Consumer {
 	private void init() throws Exception {
 		if(locator == null) {
 			Map<String,Object> map = Maps.newHashMap();
-//			map.put("host", "183.100.209.69");
-			map.put("host", "localhost");
-			map.put("port", 61616);
+			map.put("host", "183.100.209.69");
+//			map.put("host", "localhost");
+			map.put("port", 5445);
 //			
 //			Map<String,Object> map2 = Maps.newHashMap();
 //			map2.put("host", "165.243.31.58");

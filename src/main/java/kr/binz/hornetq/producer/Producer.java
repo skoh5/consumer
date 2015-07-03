@@ -30,7 +30,7 @@ public class Producer {
 	
 	private String[] key;
 	private String host;
-	private String address = "kr.binz";
+	private String address = "stomp.address.test";
 	private ServerLocator locator;
 	private ClientSession session;
 	private ClientSessionFactory factory;
@@ -53,7 +53,9 @@ public class Producer {
 				if(checkConnection()) {
 					msg = "Hello: "+ sdf.format(new Date());
 					message = session.createMessage(false);
-					message.getBodyBuffer().writeString(msg);
+					//message.getBodyBuffer().writeString(msg);
+					message.getBodyBuffer().writeBytes(msg.getBytes());
+					message.putStringProperty("content-length", String.valueOf(msg.getBytes().length));
 					//message.putStringProperty(KEY_NAME, key[idx%key.length]);
 					try {
 						producer.send(message);
@@ -75,9 +77,9 @@ public class Producer {
 	private void init() throws Exception {
 		if(locator == null) {
 			Map<String,Object> map = Maps.newHashMap();
-//			map.put("host", "1.235.191.14");
-			map.put("host", "localhost");
-			map.put("port", 61616);
+			map.put("host", "183.100.209.69");
+//			map.put("host", "localhost");
+			map.put("port", 5445);
 			/*
 			Map<String,Object> map2 = Maps.newHashMap();
 			map2.put("host", "165.243.31.58");
