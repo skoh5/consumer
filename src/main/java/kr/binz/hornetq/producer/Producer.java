@@ -1,10 +1,12 @@
 package kr.binz.hornetq.producer;
 
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 
+import kr.binz.hornetq.common.HostInfo;
+
+import org.apache.commons.lang3.StringUtils;
 import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.api.core.client.ClientMessage;
 import org.hornetq.api.core.client.ClientProducer;
@@ -28,19 +30,25 @@ public class Producer {
 	
 	public static final String KEY_NAME = "KEY";
 	
-	private String[] key;
-	private String host;
+	private String[] keys;
+	private HostInfo[] hosts;
 	private String address = "stomp.address.test";
 	private ServerLocator locator;
 	private ClientSession session;
 	private ClientSessionFactory factory;
 	private ClientProducer producer;
+	private volatile boolean isRun = true;
 	
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	
-	public Producer(String host, String[] key) {
-		this.host = host;
-		this.key = key;
+	public Producer(String[] args) {
+		keys = StringUtils.split(args[0], ",");
+		String[] dests = StringUtils.split(args[1], ",");
+		hosts = new HostInfo[dests.length];
+		int idx = 0;
+		for(String dest: dests) {
+			hosts[idx++] = new HostInfo(dest);
+		}
 	}
 
 	public class SendRunner implements Runnable {
@@ -51,15 +59,15 @@ public class Producer {
 			int idx = 0;
 			while(true) {
 				if(checkConnection()) {
-					msg = "Hello: "+ sdf.format(new Date());
+					msg = "["+idx+"]Hello: "+ sdf.format(new Date());
 					message = session.createMessage(false);
-					//message.getBodyBuffer().writeString(msg);
-					message.getBodyBuffer().writeBytes(msg.getBytes());
-					message.putStringProperty("content-length", String.valueOf(msg.getBytes().length));
-					//message.putStringProperty(KEY_NAME, key[idx%key.length]);
+					message.getBodyBuffer().writeString(msg);
+					//message.getBodyBuffer().writeBytes(msg.getBytes());
+					//message.putStringProperty("content-length", String.valueOf(msg.getBytes().length));
+					message.putStringProperty(KEY_NAME, keys[idx%keys.length]);
 					try {
 						producer.send(message);
-						LOG.debug("send msg: "+ msg +" => "+key[idx%key.length]);
+						LOG.debug("send msg: "+ msg +" => "+keys[idx%keys.length]);
 					} catch (Exception e) {
 						LOG.error("send fail", e);
 					}
@@ -75,20 +83,19 @@ public class Producer {
 	}
 	
 	private void init() throws Exception {
+		LOG.info("Producer init: {}, {}", hosts, keys);
+		LOG.info("Address: {}", this.address);
 		if(locator == null) {
-			Map<String,Object> map = Maps.newHashMap();
-			map.put("host", "183.100.209.69");
-//			map.put("host", "localhost");
-			map.put("port", 5445);
-			/*
-			Map<String,Object> map2 = Maps.newHashMap();
-			map2.put("host", "165.243.31.58");
-			map2.put("port", 9090);
-			*/
-			locator = HornetQClient.createServerLocatorWithoutHA(
-					new TransportConfiguration(NettyConnectorFactory.class.getName(), map)
-					//,new TransportConfiguration(NettyConnectorFactory.class.getName(), map2)
-					);
+			TransportConfiguration[] transConfigs = new TransportConfiguration[hosts.length];
+			int idx = 0;
+			Map<String,Object> map = null;
+			for(HostInfo host: hosts) {
+				map = Maps.newHashMap();
+				map.put("host", host.getHost());
+				map.put("port", host.getPort());
+				transConfigs[idx++] = new TransportConfiguration(NettyConnectorFactory.class.getName(), map);
+			}
+			locator = HornetQClient.createServerLocatorWithHA(transConfigs);
 			//locator.setReconnectAttempts(3);
 		}
 		
@@ -98,7 +105,7 @@ public class Producer {
 		session.start();
 		LOG.debug("Session started");
 		producer = session.createProducer(address);
-		LOG.debug("Producer created: %s", address);
+		LOG.debug("Producer created: {}", address);
 		
 	}
 	
@@ -118,25 +125,22 @@ public class Producer {
 	public void run() throws Exception {
 		init();
 		new Thread(new SendRunner()).start();
-		while(true) {
+		while(isRun) {
 			Thread.sleep(1000);
 			if(checkConnection() == false) {
-				LOG.warn("connection closed. try reconnect.");
-				clean();
-				init();
+				LOG.warn("connection closed.");
 			}
 		}
+		clean();
 	}
 	
     public static void main( String[] args )  {
     	if(args.length < 2) {
-			LOG.debug("Usage: Producer <host> <key>" );
+			LOG.debug("Usage: Producer <key,key,key...> <host:port,host:port,host:port...>" );
 			System.exit(-1);
 		}
 		try {
-			String[] keys = new String[args.length-1];
-			keys = Arrays.copyOfRange(args, 1, args.length);
-			new Producer(args[0], keys).run();			
+			new Producer(args).run();			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

@@ -2,6 +2,7 @@ package kr.binz.hornetq.consumer;
 
 import java.util.Map;
 
+import kr.binz.hornetq.common.HostInfo;
 import kr.binz.hornetq.producer.Producer;
 
 import org.apache.commons.lang3.StringUtils;
@@ -9,7 +10,6 @@ import org.hornetq.api.core.HornetQException;
 import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.api.core.client.ClientConsumer;
-import org.hornetq.api.core.client.ClientMessage;
 import org.hornetq.api.core.client.ClientSession;
 import org.hornetq.api.core.client.ClientSession.QueueQuery;
 import org.hornetq.api.core.client.ClientSessionFactory;
@@ -30,41 +30,40 @@ public class Consumer {
 	static final Logger LOG = LoggerFactory.getLogger(Consumer.class);
 	
 	private String key;
-	private String host;
+	private HostInfo[] hosts;
 	private String address = "stomp.address.test";
-	private String queueName = "stomp.queue.test1";
+	private String queueName = "stomp.queue.test";
 	private ServerLocator locator;
 	private ClientSession session;
 	private ClientSessionFactory factory;
+	private volatile boolean isRun = true;
 	
-	public Consumer(String host, String key) {
-		this.host = host;
-		this.key = key;
-		this.key = "";
-		/*
-		if(StringUtils.isEmpty(key) == false) {
-			queueName += "."+key;
+	public Consumer(String[] args) {
+		key = args[0];
+		String[] dests = StringUtils.split(args[1], ",");
+		hosts = new HostInfo[dests.length];
+		int idx = 0;
+		for(String dest: dests) {
+			hosts[idx++] = new HostInfo(dest);
 		}
-		*/		
-		LOG.debug("Queue: {}", queueName);;
 	}
 	
 	
 	private void init() throws Exception {
+		LOG.info("Consumer init: {}, {}", hosts, key);
+		LOG.info("QueueName: {}", this.queueName);
+		
 		if(locator == null) {
-			Map<String,Object> map = Maps.newHashMap();
-			map.put("host", "183.100.209.69");
-//			map.put("host", "localhost");
-			map.put("port", 5445);
-//			
-//			Map<String,Object> map2 = Maps.newHashMap();
-//			map2.put("host", "165.243.31.58");
-//			map2.put("port", 9090);
-//			
-			locator = HornetQClient.createServerLocatorWithoutHA(
-					new TransportConfiguration(NettyConnectorFactory.class.getName(), map)
-//					,new TransportConfiguration(NettyConnectorFactory.class.getName(), map2)
-					);
+			TransportConfiguration[] transConfigs = new TransportConfiguration[hosts.length];
+			int idx = 0;
+			Map<String,Object> map = null;
+			for(HostInfo host: hosts) {
+				map = Maps.newHashMap();
+				map.put("host", host.getHost());
+				map.put("port", host.getPort());
+				transConfigs[idx++] = new TransportConfiguration(NettyConnectorFactory.class.getName(), map);
+			}
+			locator = HornetQClient.createServerLocatorWithHA(transConfigs);
 			//locator.setReconnectAttempts(3);
 		}
 		
@@ -73,6 +72,7 @@ public class Consumer {
 		session = factory.createSession();
 		QueueQuery queueQuery = session.queueQuery(SimpleString.toSimpleString(queueName));
 		boolean isCreate = true;
+		/*
 		if(queueQuery.isExists()) {
 			LOG.debug("queue already exists: {}", queueName);
 			isCreate = false;
@@ -86,29 +86,26 @@ public class Consumer {
 			}
 			
 		}
+		*/
 		try {
 			if(isCreate) {
-				if(StringUtils.isEmpty(key)) {
+				if(StringUtils.equals(key, "NULL")) {
 					session.createQueue(address, queueName, false);
-					LOG.debug("create queue: "+queueName);
+					LOG.debug("create queue: {}", queueName);
 				} else {
+					queueName += queueName+"."+key;
 					session.createQueue(address, queueName, Producer.KEY_NAME+"='"+key+"'", false);
-					LOG.debug("create queue with filter: "+queueName);
+					LOG.debug("create queue with filter: {}, {}", queueName, key);
 				}
 			}
 		} catch (HornetQException e) {
 			LOG.warn("create queue fail: {}", queueName, e);
 		}
+		
 		session.start();
 		LOG.debug("Session started");
+		
 		ClientConsumer consumer = session.createConsumer(queueName);
-		/*
-		ClientMessage clientMsg = null;
-		while (true) {
-			clientMsg = consumer.receive();
-			LOG.debug(clientMsg.toString());
-		}
-		*/
 		consumer.setMessageHandler(new SimpleMessageHandler());
 		LOG.debug("Consumer created");
 	}
@@ -128,27 +125,22 @@ public class Consumer {
 	
 	public void run() throws Exception {
 		init();
-		while(true) {
+		while(isRun) {
 			Thread.sleep(1000);
 			if(checkConnection() == false) {
-				LOG.warn("connection closed. try reconnect.");				
-				clean();
-				init();
+				LOG.warn("connection closed.");				
 			}
 		}
+		clean();
 	}
 
 	public static void main( String[] args ) {
 		if(args.length < 1) {
-			LOG.debug("Usage: Main <host> <key>" );
+			LOG.debug("Usage: Main <key|'NULL'> <host:port,host:port...>" );
 			System.exit(-1);
 		}
 		try {
-			String consumerKey = null;
-			if(args.length > 1) {
-				consumerKey = args[1];
-			}
-			new Consumer(args[0], consumerKey).run();
+			new Consumer(args).run();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
