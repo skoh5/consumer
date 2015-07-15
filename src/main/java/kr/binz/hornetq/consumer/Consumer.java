@@ -64,7 +64,7 @@ public class Consumer {
 				transConfigs[idx++] = new TransportConfiguration(NettyConnectorFactory.class.getName(), map);
 			}
 			locator = HornetQClient.createServerLocatorWithHA(transConfigs);
-			//locator.setReconnectAttempts(3);
+			locator.setReconnectAttempts(-1);
 		}
 		
 		factory = locator.createSessionFactory();		

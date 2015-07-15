@@ -96,7 +96,7 @@ public class Producer {
 				transConfigs[idx++] = new TransportConfiguration(NettyConnectorFactory.class.getName(), map);
 			}
 			locator = HornetQClient.createServerLocatorWithHA(transConfigs);
-			//locator.setReconnectAttempts(3);
+			locator.setReconnectAttempts(-1);
 		}
 		
 		factory = locator.createSessionFactory();		
@@ -126,7 +126,7 @@ public class Producer {
 		init();
 		new Thread(new SendRunner()).start();
 		while(isRun) {
-			Thread.sleep(1000);
+			Thread.sleep(5000);
 			if(checkConnection() == false) {
 				LOG.warn("connection closed.");
 			}
