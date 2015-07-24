@@ -60,7 +60,7 @@ public class Producer {
 			while(true) {
 				if(checkConnection()) {
 					msg = "["+idx+"]Hello: "+ sdf.format(new Date());
-					message = session.createMessage(false);
+					message = session.createMessage(true);
 					message.getBodyBuffer().writeString(msg);
 					//message.getBodyBuffer().writeBytes(msg.getBytes());
 					//message.putStringProperty("content-length", String.valueOf(msg.getBytes().length));
@@ -101,10 +101,12 @@ public class Producer {
 		
 		factory = locator.createSessionFactory();		
 		
-		session = factory.createSession();
+//		session = factory.createSession();
+		session = factory.createSession(true, true, 0);
+		
 		session.start();
 		LOG.debug("Session started");
-		producer = session.createProducer(address);
+		producer = session.createProducer(address);		
 		LOG.debug("Producer created: {}", address);
 		
 	}

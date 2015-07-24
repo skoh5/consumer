@@ -69,14 +69,22 @@ public class Consumer {
 		
 		factory = locator.createSessionFactory();		
 		
-		session = factory.createSession();
+		
+		
+		//session = factory.createSession();
+		//session = factory.createSession(true, true, 0);
+		session = factory.createSession(false, true, true, true);
+		
+		if(StringUtils.equals(key, "NULL") == false) {
+			queueName += queueName+"."+key;
+		}
+		
 		QueueQuery queueQuery = session.queueQuery(SimpleString.toSimpleString(queueName));
 		boolean isCreate = true;
-		/*
 		if(queueQuery.isExists()) {
 			LOG.debug("queue already exists: {}", queueName);
 			isCreate = false;
-			
+			/*
 			try {
 				session.deleteQueue(queueName);
 				isCreate = true;
@@ -84,17 +92,15 @@ public class Consumer {
 			} catch (HornetQException e) {
 				LOG.warn("delete queue fail: {}", queueName, e);
 			}
-			
+			*/
 		}
-		*/
 		try {
 			if(isCreate) {
 				if(StringUtils.equals(key, "NULL")) {
-					session.createQueue(address, queueName, false);
+					session.createQueue(address, queueName, true);					
 					LOG.debug("create queue: {}", queueName);
 				} else {
-					queueName += queueName+"."+key;
-					session.createQueue(address, queueName, Producer.KEY_NAME+"='"+key+"'", false);
+					session.createQueue(address, queueName, Producer.KEY_NAME+"='"+key+"'", true);
 					LOG.debug("create queue with filter: {}, {}", queueName, key);
 				}
 			}
@@ -126,7 +132,7 @@ public class Consumer {
 	public void run() throws Exception {
 		init();
 		while(isRun) {
-			Thread.sleep(1000);
+			Thread.sleep(5000);
 			if(checkConnection() == false) {
 				LOG.warn("connection closed.");				
 			}
