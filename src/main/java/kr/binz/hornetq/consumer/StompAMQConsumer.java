@@ -1,5 +1,8 @@
 package kr.binz.hornetq.consumer;
 
+import java.net.SocketTimeoutException;
+import java.util.HashMap;
+
 import org.apache.activemq.transport.stomp.Stomp;
 import org.apache.activemq.transport.stomp.Stomp.Headers.Subscribe;
 import org.apache.activemq.transport.stomp.StompConnection;
@@ -11,9 +14,9 @@ public class StompAMQConsumer {
 	static final Logger LOG = LoggerFactory.getLogger(StompAMQConsumer.class);
 	String queueName = "stomp.queue.test1";
 	
-	public void run() throws Exception {
+	public void run(String selector) throws Exception {
 		StompConnection connection = new StompConnection();
-		connection.open("183.100.209.69", 5445);
+		connection.open("", 5445);
 		LOG.info("Stomp ActiveMQ Consumer opened");
 		         
 		connection.connect("admin", "admin");
@@ -26,14 +29,28 @@ public class StompAMQConsumer {
 		LOG.info("Stomp ActiveMQ Consumer connected");
 		         
 //		connection.subscribe(queueName, Subscribe.AckModeValues.CLIENT);
-		connection.subscribe(queueName, Subscribe.AckModeValues.AUTO);
+		
+		if(selector != null) {
+			HashMap<String,String> header = new HashMap<String,String>();
+			header.put("selector", "agentKey='"+selector+"'");
+			connection.subscribe(queueName, Subscribe.AckModeValues.AUTO, header);
+			LOG.info("subscribe: {}", header.get("selector"));
+		} else {
+			connection.subscribe(queueName, Subscribe.AckModeValues.AUTO);
+			LOG.info("subscribe");
+		}
+		
 		int receivedCnt = 0;
 		while (receivedCnt < 100) {
-//			connection.begin("tx2");		     
-			StompFrame message = connection.receive();
-			LOG.info("RCV[{}]: {}", queueName, message.getBody());
-//			connection.ack(message, "tx2");     
-//			connection.commit("tx2");
+			try {
+	//			connection.begin("tx2");		     
+				StompFrame message = connection.receive();
+				LOG.info("RCV[{}]: {}", queueName, message.getBody());
+	//			connection.ack(message, "tx2");     
+	//			connetion.commit("tx2");
+			} catch (SocketTimeoutException e) {
+				LOG.error("timeout");
+			}
 		}
 		         
 		connection.disconnect();
@@ -41,6 +58,10 @@ public class StompAMQConsumer {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		new StompAMQConsumer().run();
+		String selector = null;
+		if(args.length > 0) {
+			selector = args[0];
+		}
+		new StompAMQConsumer().run(selector);
 	}
 }

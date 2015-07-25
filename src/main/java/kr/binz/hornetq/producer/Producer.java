@@ -101,11 +101,11 @@ public class Producer {
 		}
 		
 		factory = locator.createSessionFactory();	
-//		session = factory.createSession();
 		session = factory.createSession("admin", "admin", false, true, true, true, 0);
+
 		session.start();
 		LOG.debug("Session started");
-		producer = session.createProducer(address);
+		producer = session.createProducer(address);		
 		LOG.debug("Producer created: {}", address);
 		
 	}
@@ -127,7 +127,7 @@ public class Producer {
 		init();
 		new Thread(new SendRunner()).start();
 		while(isRun) {
-			Thread.sleep(1000);
+			Thread.sleep(5000);
 			if(checkConnection() == false) {
 				LOG.warn("connection closed.");
 			}
