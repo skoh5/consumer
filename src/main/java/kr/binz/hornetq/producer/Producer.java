@@ -32,7 +32,7 @@ public class Producer {
 	
 	private String[] keys;
 	private HostInfo[] hosts;
-	private String address = "stomp.address.test";
+	private String address = "stomp.address.test.home";
 	private ServerLocator locator;
 	private ClientSession session;
 	private ClientSessionFactory factory;
@@ -60,8 +60,9 @@ public class Producer {
 			while(true) {
 				if(checkConnection()) {
 					msg = "["+idx+"]Hello: "+ sdf.format(new Date());
-					message = session.createMessage(false);
+					message = session.createMessage(true);
 					message.getBodyBuffer().writeString(msg);
+					// for stomp
 					//message.getBodyBuffer().writeBytes(msg.getBytes());
 					//message.putStringProperty("content-length", String.valueOf(msg.getBytes().length));
 					message.putStringProperty(KEY_NAME, keys[idx%keys.length]);
@@ -96,12 +97,12 @@ public class Producer {
 				transConfigs[idx++] = new TransportConfiguration(NettyConnectorFactory.class.getName(), map);
 			}
 			locator = HornetQClient.createServerLocatorWithHA(transConfigs);
-			//locator.setReconnectAttempts(3);
+			locator.setReconnectAttempts(-1);
 		}
 		
-		factory = locator.createSessionFactory();		
-		
-		session = factory.createSession();
+		factory = locator.createSessionFactory();	
+//		session = factory.createSession();
+		session = factory.createSession("admin", "admin", false, true, true, true, 0);
 		session.start();
 		LOG.debug("Session started");
 		producer = session.createProducer(address);

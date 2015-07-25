@@ -31,8 +31,8 @@ public class Consumer {
 	
 	private String key;
 	private HostInfo[] hosts;
-	private String address = "stomp.address.test";
-	private String queueName = "stomp.queue.test";
+	private String address = "stomp.address.test.home";
+	private String queueName = "stomp.queue.test.home";
 	private ServerLocator locator;
 	private ClientSession session;
 	private ClientSessionFactory factory;
@@ -64,36 +64,36 @@ public class Consumer {
 				transConfigs[idx++] = new TransportConfiguration(NettyConnectorFactory.class.getName(), map);
 			}
 			locator = HornetQClient.createServerLocatorWithHA(transConfigs);
-			//locator.setReconnectAttempts(3);
+			locator.setReconnectAttempts(-1);
 		}
 		
 		factory = locator.createSessionFactory();		
 		
-		session = factory.createSession();
+//		session = factory.createSession();
+		session = factory.createSession("admin", "admin", false, true, true, true, 0);
+		if(StringUtils.equals(key, "NULL") == false) {
+			queueName += queueName+"."+key;
+		}
 		QueueQuery queueQuery = session.queueQuery(SimpleString.toSimpleString(queueName));
 		boolean isCreate = true;
-		/*
 		if(queueQuery.isExists()) {
 			LOG.debug("queue already exists: {}", queueName);
 			isCreate = false;
 			
-			try {
-				session.deleteQueue(queueName);
-				isCreate = true;
-				LOG.debug("delete queue: {}", queueName);
-			} catch (HornetQException e) {
-				LOG.warn("delete queue fail: {}", queueName, e);
-			}
-			
+//			try {
+//				session.deleteQueue(queueName);
+//				isCreate = true;
+//				LOG.debug("delete queue: {}", queueName);
+//			} catch (HornetQException e) {
+//				LOG.warn("delete queue fail: {}", queueName, e);
+//			}
 		}
-		*/
 		try {
 			if(isCreate) {
 				if(StringUtils.equals(key, "NULL")) {
 					session.createQueue(address, queueName, false);
 					LOG.debug("create queue: {}", queueName);
 				} else {
-					queueName += queueName+"."+key;
 					session.createQueue(address, queueName, Producer.KEY_NAME+"='"+key+"'", false);
 					LOG.debug("create queue with filter: {}, {}", queueName, key);
 				}
